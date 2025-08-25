@@ -1,7 +1,4 @@
-<html>
-        <head><title>Downloaded HTML</title></head>
-        <body>
-            <pre style="white-space: pre-wrap; word-wrap: break-word;">import streamlit as st
+import streamlit as st
 import pandas as pd
 
 # --- Database (temporary in memory, can be replaced with SQLite later) ---
@@ -26,12 +23,17 @@ if page == "Screening":
         non_nego_list = [n.strip().lower() for n in non_negos.split(",") if n.strip()]
         cv_lower = cv_text.lower()
         result = "PASS"
+        missing = []
+
         for n in non_nego_list:
             if n not in cv_lower:
                 result = "FAIL"
-                break
+                missing.append(n)
 
-        st.success(f"Result: {result}")
+        if result == "PASS":
+            st.success("Result: PASS ✅ All requirements found.")
+        else:
+            st.error(f"Result: FAIL ❌ Missing: {', '.join(missing)}")
 
         # Save candidate in "database"
         st.session_state["cvs"].append({
@@ -63,6 +65,3 @@ elif page == "Search":
             st.download_button("Download Results", data=csv, file_name="shortlisted_candidates.csv", mime="text/csv")
         else:
             st.warning("No candidates found.")
-</pre>
-        </body>
-    </html>

@@ -4,6 +4,7 @@ import os
 import hashlib
 from datetime import datetime
 import re
+import pandas as pd
 
 st.set_page_config(page_title="AI CV Screener", layout="wide")
 
@@ -50,6 +51,22 @@ def score_requirement(req, cv_text):
         reason = f"⚠️ Partial match: '{req}' only partially found in CV." if score < 5 else f"✅ Fully matched: '{req}'"
         return score, reason
 
+def extract_name_contact(cv_text):
+    # Candidate name: first non-empty line
+    lines = [l.strip() for l in cv_text.split("\n") if l.strip()]
+    candidate_name = lines[0] if lines else "Unknown"
+
+    # Candidate email
+    email_match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", cv_text)
+    email = email_match.group(0) if email_match else "Not found"
+
+    # Candidate phone
+    phone_match = re.search(r"\+?\d[\d\s\-]{7,}\d", cv_text)
+    phone = phone_match.group(0) if phone_match else "Not found"
+
+    candidate_contact = f"{email} | {phone}" if phone != "Not found" else email
+    return candidate_name, candidate_contact
+
 # Sidebar for page selection
 page = st.sidebar.radio("Select Page", ["CV Screening", "Search / Download"])
 
@@ -62,13 +79,11 @@ if page == "CV Screening":
     st.subheader("Paste Candidate CV")
     cv_text = st.text_area("Candidate CV", height=400, placeholder="Paste the full resume/CV text here")
 
-    candidate_name = st.text_input("Candidate Name (for record)")
-    candidate_contact = st.text_input("Candidate Contact (email/phone)")
-
     if st.button("Screen CV"):
-        if not requirements.strip() or not cv_text.strip() or not candidate_name.strip():
-            st.warning("⚠️ Please enter requirements, candidate CV, and candidate name.")
+        if not requirements.strip() or not cv_text.strip():
+            st.warning("⚠️ Please enter requirements and candidate CV.")
         else:
+            candidate_name, candidate_contact = extract_name_contact(cv_text)
             reqs = [r.strip() for r in requirements.split("\n") if r.strip()]
             results = []
             total_score = 0
@@ -96,6 +111,8 @@ if page == "CV Screening":
 
             # Display results
             st.subheader("Screening Results")
+            st.write(f"**Candidate Name:** {candidate_name}")
+            st.write(f"**Candidate Contact:** {candidate_contact}")
             for r, reason in zip(results, reasoning):
                 st.write(r)
                 st.write(f"   - {reason}")
@@ -152,7 +169,6 @@ elif page == "Search / Download":
                     st.write(f"   Summary: {c['summary']}")
 
                 # Download CSV
-                import pandas as pd
                 df = pd.DataFrame([{
                     "Name": c['name'],
                     "Contact": c['contact'],

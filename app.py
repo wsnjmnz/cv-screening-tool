@@ -1,29 +1,37 @@
-def screen_cv(requirements, cv_text):
-    prompt = f"""
-    You are an AI CV screener. Compare this candidate's CV against the job requirements.
+import streamlit as st
+from openai import OpenAI
+import os
 
-    Job Requirements (Non-Negotiables):
-    {requirements}
+# Load OpenAI API key
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    Candidate CV:
-    {cv_text}
+st.title("AI CV Screener")
 
-    Task:
-    - Decide if the candidate PASSES or FAILS.
-    - If Pass, rate each requirement 1–5 and give a short reason.
-    - Return results in this format:
+# Input fields
+non_nego = st.text_area("Enter Non-Negotiable Requirements (one per line)")
+cv_text = st.text_area("Paste Candidate CV")
 
-    RESULT: PASS or FAIL
-    SCORES:
-    - Requirement 1: X/5
-    - Requirement 2: X/5
-    (etc.)
-    SUMMARY: (one short paragraph why)
-    """
+if st.button("Screen CV"):
+    if not non_nego or not cv_text:
+        st.warning("Please enter both requirements and CV.")
+    else:
+        with st.spinner("Screening..."):
+            prompt = f"""
+You are an AI CV screener. Compare the CV below to the job requirements.
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",  # fast + smart
-        messages=[{"role": "user", "content": prompt}],
-    )
-    
-    return response.choices[0].message.content
+Requirements:
+{non_nego}
+
+Candidate CV:
+{cv_text}
+
+Respond with:
+- PASS or FAIL
+- Short reasoning why.
+"""
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            result = response.choices[0].message.content
+            st.success(result)

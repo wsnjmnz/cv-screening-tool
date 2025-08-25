@@ -1,37 +1,46 @@
 import streamlit as st
-from openai import OpenAI
-import os
+from huggingface_hub import InferenceClient
 
-# Load OpenAI API key
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Load Hugging Face model (free)
+client = InferenceClient("mistralai/Mistral-7B-Instruct-v0.2")
 
-st.title("AI CV Screener")
+st.title("AI CV Screening Tool (Free Version)")
 
-# Input fields
-non_nego = st.text_area("Enter Non-Negotiable Requirements (one per line)")
-cv_text = st.text_area("Paste Candidate CV")
+# Upload CV
+uploaded_file = st.file_uploader("Upload CV (PDF or TXT)", type=["pdf", "txt"])
 
-if st.button("Screen CV"):
-    if not non_nego or not cv_text:
-        st.warning("Please enter both requirements and CV.")
+# Job description input
+job_description = st.text_area("Paste Job Description")
+
+if uploaded_file and job_description:
+    # Read CV text
+    if uploaded_file.type == "application/pdf":
+        import fitz  # PyMuPDF for PDF parsing
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        cv_text = ""
+        for page in doc:
+            cv_text += page.get_text()
     else:
-        with st.spinner("Screening..."):
-            prompt = f"""
-You are an AI CV screener. Compare the CV below to the job requirements.
+        cv_text = uploaded_file.read().decode("utf-8")
 
-Requirements:
-{non_nego}
+    # Build prompt
+    prompt = f"""
+    You are an AI CV screener. 
+    Evaluate the following CV against this job description.
 
-Candidate CV:
-{cv_text}
+    Job Description:
+    {job_description}
 
-Respond with:
-- PASS or FAIL
-- Short reasoning why.
-"""
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            result = response.choices[0].message.content
-            st.success(result)
+    CV:
+    {cv_text}
+
+    Provide a score from 1–5 and explain briefly why.
+    """
+
+    # Call Hugging Face model
+    with st.spinner("Screening CV..."):
+        response = client.text_generation(prompt, max_new_tokens=500)
+
+    # Display result
+    st.subheader("Screening Result")
+    st.write(response)

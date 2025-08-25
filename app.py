@@ -1,46 +1,37 @@
 import streamlit as st
-from huggingface_hub import InferenceClient
 
-# Load Hugging Face model (free)
-client = InferenceClient("mistralai/Mistral-7B-Instruct-v0.2")
+st.set_page_config(page_title="AI CV Screener", layout="wide")
 
-st.title("AI CV Screening Tool (Free Version)")
+st.title("📄 AI CV Screener (Free / Local Version)")
 
-# Upload CV
-uploaded_file = st.file_uploader("Upload CV (PDF or TXT)", type=["pdf", "txt"])
+# Input boxes
+st.subheader("Enter Non-Negotiable Requirements (one per line)")
+requirements = st.text_area("Requirements", height=200, placeholder="Example:\n- 2+ years in IT support\n- Experience with Microsoft 365\n- Strong communication skills")
 
-# Job description input
-job_description = st.text_area("Paste Job Description")
+st.subheader("Paste Candidate CV")
+cv_text = st.text_area("Candidate CV", height=400, placeholder="Paste the full resume/CV text here")
 
-if uploaded_file and job_description:
-    # Read CV text
-    if uploaded_file.type == "application/pdf":
-        import fitz  # PyMuPDF for PDF parsing
-        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        cv_text = ""
-        for page in doc:
-            cv_text += page.get_text()
+# Simple matching logic
+if st.button("Screen CV"):
+    if not requirements.strip() or not cv_text.strip():
+        st.warning("⚠️ Please enter both requirements and a candidate CV.")
     else:
-        cv_text = uploaded_file.read().decode("utf-8")
+        reqs = [r.strip() for r in requirements.split("\n") if r.strip()]
+        results = []
+        score = 0
 
-    # Build prompt
-    prompt = f"""
-    You are an AI CV screener. 
-    Evaluate the following CV against this job description.
+        for req in reqs:
+            if req.lower() in cv_text.lower():
+                results.append(f"✅ {req}")
+                score += 1
+            else:
+                results.append(f"❌ {req}")
 
-    Job Description:
-    {job_description}
-
-    CV:
-    {cv_text}
-
-    Provide a score from 1–5 and explain briefly why.
-    """
-
-    # Call Hugging Face model
-    with st.spinner("Screening CV..."):
-        response = client.text_generation(prompt, max_new_tokens=500)
-
-    # Display result
-    st.subheader("Screening Result")
-    st.write(response)
+        st.subheader("Results")
+        st.write("\n".join(results))
+        st.write(f"**Match Score:** {score}/{len(reqs)}")
+        
+        if score == len(reqs):
+            st.success("🎉 Candidate meets all requirements!")
+        else:
+            st.error("❌ Candidate does not meet all requirements.")

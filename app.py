@@ -71,7 +71,7 @@ def extract_name_contact(cv_text):
 page = st.sidebar.radio("Select Page", ["CV Screening", "Search / Download"])
 
 if page == "CV Screening":
-    st.title("📄 AI-Style CV Screener (Paste Only)")
+    st.title("📄 AI CV Screener")
 
     st.subheader("Enter Non-Negotiable Requirements (one per line)")
     requirements = st.text_area("Requirements", height=200, placeholder="Example:\n- 2+ years in IT support\n- Experience with Microsoft 365")

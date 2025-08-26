@@ -6,7 +6,15 @@ from datetime import datetime
 import re
 import pandas as pd
 
-st.set_page_config(page_title="AI CV Screener", layout="wide")
+# ----- CONFIG -----
+APP_TITLE = "AI CV SCREENER"
+SCREENING_SUBTITLE = "Paste candidate CV and your non-negotiable requirements below"
+REQUIREMENTS_LABEL = "Enter Non-Negotiable Requirements (one per line)"
+CV_LABEL = "Paste Candidate CV"
+SEARCH_SUBTITLE = "Search and download candidates based on keywords in their CVs"
+DOWNLOAD_BUTTON_TEXT = "⬇️ Download CSV of Shortlisted Candidates"
+
+st.set_page_config(page_title=APP_TITLE, layout="wide")
 
 # File to store CVs
 DB_FILE = "candidates.json"
@@ -14,7 +22,7 @@ if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w") as f:
         json.dump([], f)
 
-# Utility functions
+# ----- UTILITY FUNCTIONS -----
 def load_db():
     with open(DB_FILE, "r") as f:
         return json.load(f)
@@ -52,36 +60,35 @@ def score_requirement(req, cv_text):
         return score, reason
 
 def extract_name_contact(cv_text):
-    # Candidate name: first non-empty line
     lines = [l.strip() for l in cv_text.split("\n") if l.strip()]
     candidate_name = lines[0] if lines else "Unknown"
 
-    # Candidate email
     email_match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", cv_text)
     email = email_match.group(0) if email_match else "Not found"
 
-    # Candidate phone
     phone_match = re.search(r"\+?\d[\d\s\-]{7,}\d", cv_text)
     phone = phone_match.group(0) if phone_match else "Not found"
 
     candidate_contact = f"{email} | {phone}" if phone != "Not found" else email
     return candidate_name, candidate_contact
 
-# Sidebar for page selection
+# ----- PAGE SELECTION -----
 page = st.sidebar.radio("Select Page", ["CV Screening", "Search / Download"])
 
+# ----- PAGE 1: CV SCREENING -----
 if page == "CV Screening":
-    st.title("📄 AI CV Screener")
+    st.title(APP_TITLE)
+    st.subheader(SCREENING_SUBTITLE)
 
-    st.subheader("Enter Non-Negotiable Requirements (one per line)")
-    requirements = st.text_area("Requirements", height=200, placeholder="Example:\n- 2+ years in IT support\n- Experience with Microsoft 365")
+    st.text(REQUIREMENTS_LABEL)
+    requirements = st.text_area(REQUIREMENTS_LABEL, height=200, placeholder="Example:\n- 2+ years in IT support\n- Experience with Microsoft 365")
 
-    st.subheader("Paste Candidate CV")
-    cv_text = st.text_area("Candidate CV", height=400, placeholder="Paste the full resume/CV text here")
+    st.text(CV_LABEL)
+    cv_text = st.text_area(CV_LABEL, height=400, placeholder="Paste the full resume/CV text here")
 
     if st.button("Screen CV"):
         if not requirements.strip() or not cv_text.strip():
-            st.warning("⚠️ Please enter requirements and candidate CV.")
+            st.warning("⚠️ Please enter both requirements and candidate CV.")
         else:
             candidate_name, candidate_contact = extract_name_contact(cv_text)
             reqs = [r.strip() for r in requirements.split("\n") if r.strip()]
@@ -147,8 +154,10 @@ if page == "CV Screening":
             else:
                 st.info("⚠️ Duplicate CV detected – not saved.")
 
+# ----- PAGE 2: SEARCH / DOWNLOAD -----
 elif page == "Search / Download":
-    st.title("🔍 Search / Download Candidates")
+    st.title(APP_TITLE)
+    st.subheader(SEARCH_SUBTITLE)
     search_req = st.text_area("Enter keyword(s) to search in CVs", height=100)
     db = load_db()
     if st.button("Search"):
@@ -177,4 +186,4 @@ elif page == "Search / Download":
                     "Summary": c['summary']
                 } for c in filtered])
                 csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button("⬇️ Download CSV", csv, "shortlisted_candidates.csv", "text/csv")
+                st.download_button(DOWNLOAD_BUTTON_TEXT, csv, "shortlisted_candidates.csv", "text/csv")
